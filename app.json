@@ -1,0 +1,6 @@
+{
+  "name": "Slack Signup",
+  "description": "A simple webapp for requesting slack invites.",
+  "image": "heroku/clojure",
+  "addons": [ "heroku-postgresql" ]
+}
