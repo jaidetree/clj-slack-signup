@@ -3,7 +3,9 @@
             [compojure.handler :refer [site]]
             [compojure.route :as route]
             [clojure.java.io :as io]
+            [cheshire.core :as json]
             [ring.adapter.jetty :as jetty]
+            [ring.middleware.json :refer [wrap-json-body wrap-json-response]]
             [ring.middleware.resource :refer [wrap-resource]]
             [environ.core :refer [env]]))
 
@@ -17,11 +19,18 @@
 (defroutes app
   (GET "/" []
        (splash))
+  (POST "/signup" req
+        {:status 200
+         :headers {"Content-Type" "application/json"}
+         :body (:body req)})
   (ANY "*" []
        (route/not-found (slurp (io/resource "404.html")))))
 
 (def handler
-  (wrap-resource (site #'app) "public"))
+  (-> (site #'app)
+      (wrap-json-response)
+      (wrap-json-body {:keywords? true :bigdecimals? true})
+      (wrap-resource "public")))
 
 (defn -main [& [port]]
   (let [port (Integer. (or port (env :port) 5000))]
