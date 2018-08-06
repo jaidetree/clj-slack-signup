@@ -14,4 +14,11 @@
   :plugins [[lein-environ "1.1.0"]]
   :hooks [environ.leiningen.hooks]
   :uberjar-name "slack-signup.jar"
-  :profiles {:production {:env {:production true}}})
+  :profiles {:dev [:project/dev :profiles/dev]
+             :test [:project/test :profiles/test]
+             :production {:env {:production true}}
+             ;; only edit :profiles/* in profiles.clj
+             :profiles/dev  {}
+             :profiles/test {}
+             :project/dev {}
+             :project/test {}})

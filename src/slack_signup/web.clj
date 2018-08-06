@@ -1,5 +1,6 @@
 (ns slack-signup.web
-  (:require [compojure.core :refer [defroutes GET PUT POST DELETE ANY]]
+  (:require [slack-signup.core :as slack]
+            [compojure.core :refer [defroutes GET PUT POST DELETE ANY]]
             [compojure.handler :refer [site]]
             [compojure.route :as route]
             [clojure.java.io :as io]
@@ -20,9 +21,7 @@
   (GET "/" []
        (splash))
   (POST "/signup" req
-        {:status 200
-         :headers {"Content-Type" "application/json"}
-         :body (:body req)})
+    (slack/request-invite-handler req))
   (ANY "*" []
        (route/not-found (slurp (io/resource "404.html")))))
 

@@ -41,6 +41,13 @@
     };
   }
 
+  function delayAtLeast (delay) {
+    return stream => {
+      return Rx.combineLatest(stream, Rx.timer(delay))
+        .pipe(operators.map(R.head));
+    }
+  }
+
   const createAction = R.curry(function createAction (type, data) {
     return { type, data };
   });
@@ -50,6 +57,7 @@
   // Store
   // ---------------------------------------------------------------------------
   const actions = {
+    REQUEST_SIGNUP: "signup/request",
     SIGNUP_ERRORS: "signup/errors",
     SIGNUP_SUCCESS: "signup/success",
     SUBMIT: "signup/form/submit",
@@ -61,15 +69,23 @@
   };
 
   const reducer = combineReducers({
+    is_loading: createReducer({
+      initial: false,
+      [actions.REQUEST_SIGNUP]: R.T,
+      [actions.SIGNUP_SUCCESS]: R.F,
+      [actions.SIGNUP_ERRORS]: R.F,
+    }),
     errors: createReducer({
       initial: [],
-      [actions.SIGNUP_SUBMIT]: () => [],
+      [actions.REQUEST_SIGNUP]: () => [],
+      [actions.SIGNUP_SUCCESS]: () => [],
       [actions.SIGNUP_ERRORS]: (state, action) =>
         R.uniq(state.concat(action.data)),
     }),
     form: createReducer({
       initial: {
-        name: "",
+        first_name: "",
+        last_name: "",
         email: "",
       },
       [actions.UPDATE_FORM]: (state, action) =>
@@ -95,23 +111,37 @@
       .pipe(
         operators.filter(ofType(actions.SUBMIT)),
         operators.switchMap(() => state$.pipe(operators.take(1))),
+        operators.filter(state => !state.is_loading),
+        operators.debounceTime(200),
         operators.pluck("form"),
-        operators.flatMap(data => ajax
+        operators.distinctUntilChanged(R.equals),
+        operators.map(createAction(actions.REQUEST_SIGNUP)),
+      );
+  }
+
+  function requestInviteEpic (action$, state$) {
+    return action$
+      .pipe(
+        operators.filter(ofType(actions.REQUEST_SIGNUP)),
+        operators.pluck("data"),
+        operators.switchMap(data => ajax
             .post("/signup", data, {
               "Content-Type": "application/json",
             })
             .pipe(
               operators.map(createAction(actions.SIGNUP_SUCCESS)),
               operators.catchError(err => Rx.of(
-                createAction(actions.SIGNUP_ERRORS, err)
+                createAction(actions.SIGNUP_ERRORS, err.response.errors)
               )),
+              delayAtLeast(1200),
             )
         )
-      )
+      );
   }
 
   const epic = combineEpics(
     submitEpic,
+    requestInviteEpic,
   );
 
   // Store init
@@ -127,9 +157,6 @@
     );
 
   const epic$ = epic(action$, state$, deps)
-    .pipe(
-      operators.tap(console.log),
-    )
     .subscribe(action => action$.next(action));
 
   const dispatch = action => action$.next(action);
@@ -192,24 +219,84 @@
       }
     })
 
+  const errors$ = state$
+    .pipe(
+      operators.filter(isView("form")),
+      operators.distinctUntilKeyChanged("errors"),
+      operators.map(renderFormErrors),
+    )
+    .subscribe(errorsView => {
+      const el = document.querySelector(".form__errors");
+
+      el.replaceChild(errorsView, el.firstChild);
+    });
+
+  const loading$ = state$
+    .pipe(
+      operators.filter(isView("form")),
+      operators.distinctUntilKeyChanged("is_loading"),
+      operators.map(R.prop("is_loading")),
+      operators.skip(1),
+    )
+    .subscribe(isLoading => {
+      const el = document.querySelector(".signup-form__btn");
+
+      el.disabled = isLoading;
+      el.innerHTML = isLoading ? "Requesting Invite&hellip;" : "Try Again";
+    })
+
+  function renderFormErrors (state) {
+    return h("ul", { class: "form-errors" }, state.errors
+      .map(err => h("li", { class: "form-error" }, [
+        h("span", { class: "form-error__label"}, err.label),
+        h("p", { class: "form-error__message"}, err.message),
+      ])),
+    );
+  }
+
   function renderForm (state) {
     return h("form", { class: "signup-form form",
                        onsubmit }, [
-      h("div",     { class: "form-field" }, [
+      h("div",     { class: "form-field signup-form__first-name" }, [
+        h("label", { for: "id_first_name",
+                     class: "form-label" },
+                   "First Name"),
+        h("input", { id: "id_first_name",
+                     name: "first_name",
+                     class: "form-input form-input--type_text",
+                     oninput,
+                     type: "text" }),
+      ]),
+      h("div",     { class: "form-field signup-form__last-name" }, [
+        h("label", { for: "id_last_name",
+                     class: "form-label" },
+                   "Last Name"),
+        h("input", { id: "id_last_name",
+                     name: "last_name",
+                     class: "form-input form-input--type_text",
+                     oninput,
+                     type: "text" }),
+      ]),
+      h("div",     { class: "form-field signup-form__email" }, [
         h("label", { for: "id_email",
                      class: "form-label" },
                    "Email"),
         h("input", { id: "id_email",
                      name: "email",
                      class: "form-input form-input--type_text",
-                     oninput: e => store
-                      .dispatch(createAction(
-                        actions.UPDATE_FORM,
-                        { email: e.target.value },
-                      )),
+                     oninput,
                      type: "text" }),
+      ]),
+      h("div",     { class: "form__errors" }, [
+        renderFormErrors(state),
+      ]),
+      h("div",     { class: "form-field signup-form__submit" }, [
+        h("button", { type: "submit",
+                      name: "email",
+                      class: "signup-form__btn" },
+                    "Request an Invite"),
       ])
-    ])
+    ]);
   }
 
   function renderConfirm (state) {
@@ -229,7 +316,7 @@
   function oninput (e) {
     store.dispatch(createAction(
       actions.UPDATE_FORM,
-      { email: e.target.value },
+      { [e.target.name]: e.target.value },
     ));
   }
 
