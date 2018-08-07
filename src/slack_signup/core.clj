@@ -157,9 +157,9 @@
 
   Example
     (fork {:ok true :data 1}
-          #(:ok %)
-          #(update % :data inc)
-          #(update % :data dec))
+          :ok
+          :then #(update % :data inc)
+          :else #(update % :data dec))
     // => {:ok true :data 2}
   "
   [input test-fn & {:keys [then else with]

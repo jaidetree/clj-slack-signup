@@ -2,3 +2,4 @@
 .lein-env
 .lein-repl-history
 profiles.clj
+.lein-failures
