@@ -91,7 +91,7 @@
       // coerce into an array
       .concat(types)
       // return true if action's type is in expected types list
-      .include(action.type);
+      .includes(action.type);
   }
 
   // Store
