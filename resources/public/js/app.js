@@ -8,6 +8,11 @@
   // Store Setup
   // ---------------------------------------------------------------------------
 
+  /**
+   * combineEpics :: (...(action$, state$, { Dependencies })) -> action$
+   * Takes many epic functions and returns single epic function that
+   * shares incoming actions with each.
+   */
   function combineEpics (...epics) {
     return (action$, state$, deps) => Rx.from(epics)
       .pipe(
@@ -15,6 +20,11 @@
       );
   }
 
+  /**
+   * combineReducers :: ({ String: ({ State }, { Action }) -> { State }}) -> ({ State }, { Action }) -> { State }
+   * Takes many reducers and applies them to sub-state specified by key and
+   * returns single reducer function
+   */
   function combineReducers (reducers) {
     return (state, action) => {
       return R
@@ -31,7 +41,14 @@
     };
   }
 
-  function createReducer(handlers) {
+  /**
+   * createReducer :: { [String]: ({ State }, { Action }) -> { State }}
+   * Creates a reducer that reduces its piece of the store according to
+   * action string type.
+   * Returns function that takes current parent state and action object to
+   * reduce with.
+   */
+  function createReducer (handlers) {
     return (state=handlers.initial, action) => {
       if (handlers[action.type]) {
         return handlers[action.type](state, action);
@@ -41,18 +58,41 @@
     };
   }
 
+  /**
+   * delayAtLeast :: Number -> Observabe -> Observable
+   * Waits for slowest race between a timer of delay in milliseconds or source
+   * observable. Often used to butter up the UX so UI doesn't flash.
+   */
   function delayAtLeast (delay) {
-    return stream => {
-      return Rx.combineLatest(stream, Rx.timer(delay))
-        .pipe(operators.map(R.head));
-    }
+    return stream => Rx
+      .combineLatest(stream, Rx.timer(delay))
+      .pipe(operators.map(R.head));
   }
 
+  /**
+   * createAction :: String -> a -> { type: String, data: a}
+   * Curried helper function to create action objects. Syntax sugar mostly.
+   * @example
+   * [ 55 ].map(createAction("ADD"))
+   * // => { type: "ADD", data: 55 }
+   */
   const createAction = R.curry(function createAction (type, data) {
     return { type, data };
   });
 
-  const ofType = types => action => [].concat(types).includes(action.type);
+  /**
+   * ofType :: (String | [ String ]) -> { Action } -> Boolean
+   * Takes a string or list of strings and returns a function that takes
+   * an action. If the action type is in the list of expected types return
+   * true otherwise false.
+   */
+  function ofType (types) {
+    return action => []
+      // coerce into an array
+      .concat(types)
+      // return true if action's type is in expected types list
+      .include(action.type);
+  }
 
   // Store
   // ---------------------------------------------------------------------------
@@ -68,6 +108,7 @@
     window,
   };
 
+  // Create store reducers that respond to various action types
   const reducer = combineReducers({
     is_loading: createReducer({
       initial: false,
@@ -106,33 +147,61 @@
     })
   })
 
+  /**
+   * submitEpic ::  (Observable action$, Observable state$)
+   *   -> Observable action$
+   * Epic for form submissions. Ensures we are not in the process of loading
+   * a request already and waits 200ms from the last submission before
+   * emitting a REQUEST_SIGNUP action.
+   */
   function submitEpic (action$, state$) {
     return action$
       .pipe(
+        // Received SUBMIT action
         operators.filter(ofType(actions.SUBMIT)),
+        // Get latest state, kill previously awaiting streams
         operators.switchMap(() => state$.pipe(operators.take(1))),
+        // Only continue if we're not loading
         operators.filter(state => !state.is_loading),
+        // Only take the last state update in 200ms
         operators.debounceTime(200),
+        // { form: { Form } } -> { Form }
         operators.pluck("form"),
+        // Only continue if Form data is different than last time
+        // prevents spamming the submit button when data is incorrect
         operators.distinctUntilChanged(R.equals),
+        // { Form } -> { type: REQUEST_SIGNUP, data: { Form }}
         operators.map(createAction(actions.REQUEST_SIGNUP)),
       );
   }
 
+  /**
+   * requestInviteEpic :: (Observable action$, Observable state$)
+   *   -> Observable action$
+   * Request invite form server and either show errors to user or continue to
+   * confirmation page
+   */
   function requestInviteEpic (action$, state$) {
     return action$
       .pipe(
+        // REQUEST_SIGNUP action received
         operators.filter(ofType(actions.REQUEST_SIGNUP)),
+        // { data: {} } -> {}
         operators.pluck("data"),
+        // { data } -> Observable
         operators.switchMap(data => ajax
+            // request invite from server
             .post("/signup", data, {
               "Content-Type": "application/json",
             })
             .pipe(
+              // when successful emit success action
               operators.map(createAction(actions.SIGNUP_SUCCESS)),
+              // when failed emit fail action
               operators.catchError(err => Rx.of(
                 createAction(actions.SIGNUP_ERRORS, err.response.errors)
               )),
+              // wait at least 1200 ms or request if longer
               delayAtLeast(1200),
             )
         )
@@ -147,6 +216,7 @@
   // Store init
   // ---------------------------------------------------------------------------
 
+  // Implements a light-weight redux implementation in RxJS
   const action$ = new Rx.Subject();
   const state$ = action$
     .pipe(
@@ -156,11 +226,22 @@
       operators.refCount(),
     );
 
+  // Lightweight redux-observable implementation
   const epic$ = epic(action$, state$, deps)
     .subscribe(action => action$.next(action));
 
-  const dispatch = action => action$.next(action);
+  /**
+   * dispatch :: { type: string, data: a } => { Action } -> { Action }
+   * Takes an action and runs it through our store reducers to calculate the
+   * next store state then runs action through epics for side effects
+   */
+  function dispatch (action) {
+    action$.next(action);
 
+    return action;
+  }
+
+  // Create a public store shape
   const store = {
     dispatch,
     state$,
@@ -169,11 +250,18 @@
   // View
   // ---------------------------------------------------------------------------
 
+  /**
+   * h :: (String, { String: * }, [ DOMElement]) -> DOMElement
+   * Quick helper function to create dom elements with attributes and children
+   */
   function h (element, attrs, children=[]) {
     const el = document.createElement(element);
 
+    // set attributes on element
     R.toPairs(attrs)
       .forEach(([ key, value]) => {
+        // if value is a function set it manually as it's likely an event
+        // handler
         if (typeof value === "function") {
           el[key] = value;
         }
@@ -182,10 +270,13 @@
         }
       });
 
+    // append children
     [].concat(children).forEach(child => {
+      // if child is text node create a text node
       if (typeof child === "string") {
         el.appendChild(document.createTextNode(child));
       }
+      // otherwise assume dom element
       else {
         el.appendChild(child);
       }
@@ -199,6 +290,7 @@
   const isView = R.propEq("view");
   const el = document.querySelector(".app");
 
+  // General app stream responsible for rendering the form or confirm view
   const app = state$
     .pipe(
       operators.tap(console.log),
@@ -219,6 +311,7 @@
       }
     })
 
+  // Errors stream gets errors from store stream and replaces them in DOM
   const errors$ = state$
     .pipe(
       operators.filter(isView("form")),
@@ -231,6 +324,8 @@
       el.replaceChild(errorsView, el.firstChild);
     });
 
+  // Loading stream gets loading state updates from store and disables
+  // submit button
   const loading$ = state$
     .pipe(
       operators.filter(isView("form")),
@@ -245,6 +340,10 @@
       el.innerHTML = isLoading ? "Requesting Invite&hellip;" : "Try Again";
     })
 
+  /**
+   * renderFormErrors :: { errors: [{ label: String, message: String}] } -> DOMElement
+   * Takes our store state and returns a list of error messages.
+   */
   function renderFormErrors (state) {
     return h("ul", { class: "form-errors" }, state.errors
       .map(err => h("li", { class: "form-error" }, [
@@ -254,6 +353,10 @@
     );
   }
 
+  /**
+   * renderForm :: { State } -> DOMElement
+   * Takes store state and returns a form with name and email fields.
+   */
   function renderForm (state) {
     return h("form", { class: "signup-form form",
                        onsubmit }, [
@@ -299,12 +402,23 @@
     ]);
   }
 
+  /**
+   * renderConfirm :: { State } -> DOMElement
+   * Takes store state and returns confirm page
+   */
   function renderConfirm (state) {
     return h("div", { class: "signup-confirm" }, [
       h("h1", {}, "An invite will be sent")
     ])
   }
 
+  // Event Handlers
+  // -------------------------------------------------------------------------
+
+  /**
+   * onSubmit :: { SubmitEvent } -> void
+   * Dispatches SUBMIT action to store reducers & epics
+   */
   function onsubmit (e) {
     e.preventDefault();
     store.dispatch(createAction(
@@ -313,6 +427,10 @@
     ))
   }
 
+  /**
+   * onInput :: { InputEvent } -> void
+   * Dispatches UPDATE_FORM to store reducers & epics
+   */
   function oninput (e) {
     store.dispatch(createAction(
       actions.UPDATE_FORM,
