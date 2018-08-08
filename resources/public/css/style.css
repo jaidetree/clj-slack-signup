@@ -96,6 +96,7 @@ h1 {
   font-size: 18px;
   background: #00cca1;
   color: #fff;
+  font-weight: 800;
   outline: none;
 }
 .signup-form__btn:active {

@@ -42,7 +42,7 @@
   "Takes a string and returns true or false if it seems like a name"
   [name]
   (boolean (and name
-                (>= (count (clojure.string/trim name)) 2))))
+                (>= (count (clojure.string/trim name)) 1))))
 (defn is-valid?
   "Takes a form or any map and checks for {:ok true}. Returns true or false."
   [form]
@@ -74,12 +74,12 @@
         errors (if-not (is-name? first_name)
                  (concat errors [{:name "first_name"
                                   :label "First Name"
-                                  :message "Your first name must be at least two characters or more."}])
+                                  :message "Your first name must be at least one or more characters."}])
                  (concat errors []))
         errors (if-not (is-name? last_name)
                  (concat errors [{:name "last_name"
                                   :label "Last Name"
-                                  :message "Your last name must be at least two characters or more."}])
+                                  :message "Your last name must be at least one or more characters."}])
                  (concat errors []))]
       (if (empty? errors)
         {:ok true

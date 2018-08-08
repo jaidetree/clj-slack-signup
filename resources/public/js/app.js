@@ -395,7 +395,7 @@
         h("button", { type: "submit",
                       name: "email",
                       class: "signup-form__btn" },
-                    "Request an Invite"),
+                    "Join the Conversation"),
       ])
     ]);
   }
