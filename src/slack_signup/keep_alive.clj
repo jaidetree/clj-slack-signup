@@ -10,5 +10,6 @@
         (do
           (println "Pinging slack signup app")
           (http/get "https://slack.venuebook.com")
+          ;; Every 15 min
           (<! (timeout 900000))
           (recur)))))
