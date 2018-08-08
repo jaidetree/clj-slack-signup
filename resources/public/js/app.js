@@ -372,7 +372,7 @@
     return h("form", { class: "signup-form form",
                        onsubmit }, [
       h("img", { class: "app__logo", alt: "VenueBook + Slack Community", src: url(state.location, "/img/venuebook_slack_logo.svg")}, []),
-      h("p", { class: "app__intro" }, "Chat with other Venue Managers to talk shop, trade stories, and expand your network."),
+      h("p", { class: "app__intro" }, "Chat with other event planners to get advice, recommendations, and share experiences"),
       h("h1", { class: "app__title" }, "Request an Invitation"),
       h("div", { class: "form-field signup-form__first-name" }, [
         h("label", { for: "id_first_name",
