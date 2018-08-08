@@ -9,7 +9,8 @@
                  [ring/ring-json "0.4.0"]
                  [environ "1.1.0"]
                  [clj-http "3.9.1"]
-                 [cheshire "5.8.0"]]
+                 [cheshire "5.8.0"]
+                 [org.clojure/core.async "0.4.474"]]
   :main ^:skip-aot slack-signup.web
   :min-lein-version "2.8.1"
   :plugins [[lein-environ "1.1.0"]]
