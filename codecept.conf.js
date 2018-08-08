@@ -6,7 +6,7 @@ module.exports.config = {
     Puppeteer: {
       url: "http://localhost:5000",
       waitForNavigation: "networkidle0",
-      show: true
+      show: false
     }
   },
   include: {

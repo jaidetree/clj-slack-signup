@@ -97,6 +97,7 @@
   // Store
   // ---------------------------------------------------------------------------
   const actions = {
+    INITIALIZE: "signup/initialize",
     REQUEST_SIGNUP: "signup/request",
     SIGNUP_ERRORS: "signup/errors",
     SIGNUP_SUCCESS: "signup/success",
@@ -140,7 +141,14 @@
     view: createReducer({
       initial: "form",
       [actions.SIGNUP_SUCCESS]: () => "confirm",
-    })
+    }),
+    location: createReducer({
+      initial: {},
+      [actions.INITIALIZE]: (state, action) => ({
+        protocol: action.data.location.protocol,
+        host: action.data.location.host,
+      })
+    }),
   })
 
   /**
@@ -216,8 +224,7 @@
   const action$ = new Rx.Subject();
   const state$ = action$
     .pipe(
-      operators.startWith(reducer({}, {})),
-      operators.scan(reducer),
+      operators.scan(reducer, {}),
       operators.publishReplay(1),
       operators.refCount(),
     );
@@ -279,6 +286,15 @@
     });
 
     return el;
+  }
+
+  /**
+   * url :: ({ Window.Location , String) -> String}
+   * Takes location data and a path and returns a fully-qualified URL string.
+   * Useful when using the h function to set src attributes.
+   */
+  function url (location, path) {
+    return `${location.protocol}//${location.host}${path}`;
   }
 
   // App
@@ -355,7 +371,7 @@
   function renderForm (state) {
     return h("form", { class: "signup-form form",
                        onsubmit }, [
-      h("img", { class: "app__logo", alt: "VenueBook + Slack Community", src: "http://localhost:5000/img/venuebook_slack_logo.svg"}, []),
+      h("img", { class: "app__logo", alt: "VenueBook + Slack Community", src: url(state.location, "/img/venuebook_slack_logo.svg")}, []),
       h("p", { class: "app__intro" }, "Chat with other Venue Managers to talk shop, trade stories, and expand your network."),
       h("h1", { class: "app__title" }, "Request an Invitation"),
       h("div", { class: "form-field signup-form__first-name" }, [
@@ -442,5 +458,11 @@
       { [e.target.name]: e.target.value },
     ));
   }
+
+  // Initialize app
+  // --------------------------------------------------------------------------
+  store.dispatch(createAction(actions.INITIALIZE, {
+    location: window.location,
+  }));
 
 })(window, document);
