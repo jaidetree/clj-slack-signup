@@ -131,10 +131,6 @@
       },
       [actions.UPDATE_FORM]: (state, action) =>
         R.mergeDeepRight(state, action.data),
-      [actions.SIGNUP_SUCCESS]: (state, action) => ({
-        name: "",
-        email: "",
-      })
     }),
     user: createReducer({
       initial: {},
@@ -360,7 +356,10 @@
   function renderForm (state) {
     return h("form", { class: "signup-form form",
                        onsubmit }, [
-      h("div",     { class: "form-field signup-form__first-name" }, [
+      h("img", { class: "app__logo", src: "https://venuebook.com/static/images/booker/logos/venuebook_logo.svg"}, []),
+      h("p", { class: "app__intro" }, "Chat with other Venue Managers to talk shop, trade stories, and expand your network."),
+      h("h1", { class: "app__title" }, "Request an Invitation"),
+      h("div", { class: "form-field signup-form__first-name" }, [
         h("label", { for: "id_first_name",
                      class: "form-label" },
                    "First Name"),
@@ -407,8 +406,15 @@
    * Takes store state and returns confirm page
    */
   function renderConfirm (state) {
-    return h("div", { class: "signup-confirm" }, [
-      h("h1", {}, "An invite will be sent")
+    return h("div", { class: "signup-confirm signup-form" }, [
+      h("h1", {}, "Invite Sent"),
+      h("p", { class: "app__intro" }, [
+        `Hi ${state.form.first_name}, we just sent an invitation to `,
+      ]),
+      h("p", { class: "app__intro" }, [
+        h("code", { class: "app__code" }, state.form.email),
+      ]),
+      h("p", { class: "app__intro" }, "We hope to hear from you soon.")
     ])
   }
 

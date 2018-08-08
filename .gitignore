@@ -3,3 +3,4 @@
 .lein-repl-history
 profiles.clj
 .lein-failures
+node_modules

@@ -16,17 +16,17 @@
       :label "Already in Team"
       :message "Looks like you are already a member. Try signing in or resetting your password."}
    :already_invited
-      {:name "Email"
-       :label "Already Invited"
-       :message "An invite was already sent. Please check your email for an invite."}
+     {:name "Email"
+      :label "Already Invited"
+      :message "An invite was already sent. Please check your email for an invite."}
    :sent_recently
-      {:name "Email"
-       :label "Resent Invitation"
-       :message "We recently sent an invitation to this email address. Please check your email inbox for an invitation."}
+     {:name "Email"
+      :label "Resent Invitation"
+      :message "We recently sent an invitation to this email address. Please check your email inbox for an invitation."}
    :invalid_email
-      {:name "Email"
-       :label "Invalid email"
-       :message "Sorry but that doesn't appear to be a valid email address. Please correct it and try again."}})
+     {:name "Email"
+      :label "Invalid email"
+      :message "Sorry but that doesn't appear to be a valid email address. Please correct it and try again."}})
 
 (def serious-error
   {:name "server_error"
@@ -182,9 +182,7 @@
   [form]
   {:status 400
    :headers {"Content-Type" "application/json"}
-   :body {:ok false
-          :data (:data form)
-          :errors (:errors form)}})
+   :body form})
 
 (defn success-response
   "Takes a validated form map and returns a success JSON response
@@ -200,9 +198,7 @@
   [form]
   {:status 200
    :headers {"Content-Type" "application/json"}
-   :body {:ok true
-          :data (:data form)
-          :errors []}})
+   :body form})
 
 (defn request-invite
   "Takes a validated form map and returns an updated form
@@ -224,7 +220,11 @@
         form
         {:ok false
          :data data
-         :errors [(get slack-errors (keyword (:error response)) serious-error)]})))
+         :errors [(get slack-errors
+                       (keyword (:error response))
+                       (assoc serious-error
+                              :slack_error
+                              (:error response)))]})))
 
 (defn request-invite-handler
   "Ring handler takes a request map with parsed :body and returns response.
