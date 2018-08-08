@@ -289,7 +289,6 @@
   // General app stream responsible for rendering the form or confirm view
   const app = state$
     .pipe(
-      operators.tap(console.log),
       operators.distinctUntilKeyChanged("view"),
       operators.map(R.cond([
         [ isView("confirm"), renderConfirm ],
@@ -356,7 +355,7 @@
   function renderForm (state) {
     return h("form", { class: "signup-form form",
                        onsubmit }, [
-      h("img", { class: "app__logo", src: "https://venuebook.com/static/images/booker/logos/venuebook_logo.svg"}, []),
+      h("img", { class: "app__logo", alt: "VenueBook + Slack Community", src: "http://localhost:5000/img/venuebook_slack_logo.svg"}, []),
       h("p", { class: "app__intro" }, "Chat with other Venue Managers to talk shop, trade stories, and expand your network."),
       h("h1", { class: "app__title" }, "Request an Invitation"),
       h("div", { class: "form-field signup-form__first-name" }, [

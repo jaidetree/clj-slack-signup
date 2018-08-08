@@ -6,6 +6,7 @@
             [clojure.java.io :as io]
             [cheshire.core :as json]
             [ring.adapter.jetty :as jetty]
+            [ring.middleware.content-type :refer [wrap-content-type]]
             [ring.middleware.json :refer [wrap-json-body wrap-json-response]]
             [ring.middleware.resource :refer [wrap-resource]]
             [environ.core :refer [env]]))
@@ -29,7 +30,8 @@
   (-> (site #'app)
       (wrap-json-response)
       (wrap-json-body {:keywords? true :bigdecimals? true})
-      (wrap-resource "public")))
+      (wrap-resource "public")
+      (wrap-content-type)))
 
 (defn -main [& [port]]
   (let [port (Integer. (or port (env :port) 5000))]
