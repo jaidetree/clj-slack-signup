@@ -5,3 +5,4 @@ profiles.clj
 .lein-failures
 node_modules
 e2e/output
+yarn-error.log
